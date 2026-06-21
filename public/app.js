@@ -1,24 +1,26 @@
-/* Vua · Dân · Nô Lệ — front-end (nói chuyện với server)
+/* Kéo · Búa · Bao — front-end (nói chuyện với server)
    Đăng nhập/BXH/Lịch sử qua API. Online (tìm trận, phòng, ván đấu) qua Socket.IO.
    Đấu với máy: chạy cục bộ, KHÔNG tính vào BXH (chỉ để luyện tập). */
 
+// Giữ nguyên id nội bộ (vua/dan/nole) để KHÔNG phải sửa server. Chỉ đổi hiển thị sang kéo/búa/bao.
+// Vòng khắc chế cũ: vua>dan, dan>nole, nole>vua  ==  Búa>Kéo, Kéo>Bao, Bao>Búa (đúng luật kéo búa bao).
 var ROLES = [
-  { id: "vua",  emoji: "👑", vn: "Vua",   en: "King" },
-  { id: "dan",  emoji: "🧑‍🌾", vn: "Dân",   en: "Commoner" },
-  { id: "nole", emoji: "⛓️", vn: "Nô lệ", en: "Slave" }
+  { id: "dan",  emoji: "✌️", vn: "Kéo", en: "Scissors" },
+  { id: "vua",  emoji: "✊", vn: "Búa", en: "Rock" },
+  { id: "nole", emoji: "✋", vn: "Bao", en: "Paper" }
 ];
 var ROLE = {}; ROLES.forEach(function (r) { ROLE[r.id] = r; });
 var BEATS = { vua: "dan", dan: "nole", nole: "vua" };
 var WHY = {
-  "vua>dan":  { vn: "Vua cai trị Dân",            en: "King rules the Commoner" },
-  "dan>nole": { vn: "Dân áp chế Nô lệ",           en: "Commoner subdues the Slave" },
-  "nole>vua": { vn: "Nô lệ vùng lên lật đổ Vua",  en: "Slave overthrows the King" }
+  "vua>dan":  { vn: "Búa đập Kéo", en: "Rock smashes Scissors" },
+  "dan>nole": { vn: "Kéo cắt Bao", en: "Scissors cut Paper" },
+  "nole>vua": { vn: "Bao bọc Búa", en: "Paper covers Rock" }
 };
 function judge(a, b) { return a === b ? "draw" : (BEATS[a] === b ? "win" : "lose"); }
 
 var T = {
   vn: {
-    subtitle: "Đối kháng 1v1 — luật vòng tròn",
+    subtitle: "Kéo búa bao — đối kháng 1v1",
     loginTitle: "Đăng nhập", username: "Tên tài khoản", password: "Mật khẩu",
     enter: "Đăng nhập", newAcct: "Tài khoản chưa tồn tại sẽ được tạo tự động.",
     errFields: "Nhập tên tài khoản và mật khẩu.", errWrongPw: "Sai mật khẩu.", errServer: "Lỗi máy chủ, thử lại sau.",
@@ -42,7 +44,7 @@ var T = {
     histEmpty: "Chưa có trận online nào.", histWin: "Thắng", histLose: "Thua", vs: "gặp"
   },
   en: {
-    subtitle: "1v1 duel — circular rule",
+    subtitle: "Rock paper scissors — 1v1",
     loginTitle: "Log in", username: "Username", password: "Password",
     enter: "Log in", newAcct: "A new account is created automatically.",
     errFields: "Enter a username and password.", errWrongPw: "Wrong password.", errServer: "Server error, try again.",
@@ -276,7 +278,7 @@ function toLobby() {
 // ===================== views =====================
 function viewLang() {
   return '' +
-    '<div class="head"><div class="crowns">👑 ⚔️ ⛓️</div><h1>Vua · Dân · Nô Lệ</h1></div>' +
+    '<div class="head"><div class="crowns">✌️ ✊ ✋</div><h1>Kéo · Búa · Bao</h1></div>' +
     '<div class="panel">' +
       '<p style="text-align:center;color:var(--muted);margin:0 0 16px">Chọn ngôn ngữ · Choose language</p>' +
       '<div class="stack">' +
@@ -291,9 +293,9 @@ function shell(content) {
     : '<span></span>';
   return '' +
     '<div class="topbar"><button class="mini" id="langToggle">🌐 ' + (state.lang === "vn" ? "VN" : "EN") + '</button>' + right + '</div>' +
-    '<div class="head"><div class="crowns">👑 ⚔️ ⛓️</div><h1>Vua · Dân · Nô Lệ</h1><p class="sub">' + tr().subtitle + '</p></div>' +
+    '<div class="head"><div class="crowns">✌️ ✊ ✋</div><h1>Kéo · Búa · Bao</h1><p class="sub">' + tr().subtitle + '</p></div>' +
     content +
-    '<div class="foot">👑 ' + rname("vua") + ' &gt; 🧑‍🌾 ' + rname("dan") + ' &gt; ⛓️ ' + rname("nole") + ' &gt; 👑 ' + rname("vua") + '</div>';
+    '<div class="foot">✊ ' + rname("vua") + ' &gt; ✌️ ' + rname("dan") + ' &gt; ✋ ' + rname("nole") + ' &gt; ✊ ' + rname("vua") + '</div>';
 }
 function viewLogin() {
   return '<div class="panel"><h2 class="title">' + tr().loginTitle + '</h2><div class="stack">' +
