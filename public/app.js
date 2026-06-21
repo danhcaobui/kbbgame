@@ -23,7 +23,7 @@ var T = {
     enter: "Đăng nhập", newAcct: "Tài khoản chưa tồn tại sẽ được tạo tự động.",
     errFields: "Nhập tên tài khoản và mật khẩu.", errWrongPw: "Sai mật khẩu.", errServer: "Lỗi máy chủ, thử lại sau.",
     errCode: "Mã phòng chưa hợp lệ.", errRoom: "Không vào được phòng (sai mã hoặc chủ phòng đã thoát).",
-    oppLeft: "Đối thủ đã rời trận.", netErr: "Mất kết nối máy chủ.",
+    oppLeft: "Đối thủ đã rời trận.", forfeitWin: "Đối thủ rời trận — bạn được xử thắng.", netErr: "Mất kết nối máy chủ.",
     connecting: "Đang vào phòng…", creatingRoom: "Đang tạo phòng…",
     searching: "Đang tìm đối thủ…", cancelSearch: "Hủy tìm", fewPlayers: "Ít người đang online — có thể chờ lâu. Thử Đấu với máy nhé.",
     logout: "Đăng xuất",
@@ -47,7 +47,7 @@ var T = {
     enter: "Log in", newAcct: "A new account is created automatically.",
     errFields: "Enter a username and password.", errWrongPw: "Wrong password.", errServer: "Server error, try again.",
     errCode: "Invalid room code.", errRoom: "Could not join the room (wrong code or host left).",
-    oppLeft: "Opponent left the match.", netErr: "Lost connection to server.",
+    oppLeft: "Opponent left the match.", forfeitWin: "Opponent left — you win by forfeit.", netErr: "Lost connection to server.",
     connecting: "Joining room…", creatingRoom: "Creating room…",
     searching: "Finding an opponent…", cancelSearch: "Cancel", fewPlayers: "Few players online — this may take a while. Try the bot.",
     logout: "Log out",
@@ -73,7 +73,7 @@ var state = {
   tab: "lobby", lobbyTarget: null,
   mode: null, role: "host", code: "", target: 3, matchId: null,
   round: 1, scores: { me: 0, opp: 0 }, myMove: null, oppMove: null, oppName: "",
-  phase: "idle", lastWin: false, netMsg: "",
+  phase: "idle", lastWin: false, forfeit: false, netMsg: "",
   lbRows: null, histRows: null, _hint: null
 };
 var socket = null;
@@ -154,6 +154,11 @@ function connectSocket() {
     if (state.phase === "gameover" || state.phase === "left") return;
     state.netMsg = tr().oppLeft; state.phase = "left"; render();
   });
+  socket.on("forfeit", function (d) {
+    state.scores = (d && d.scores) || { me: state.target, opp: 0 };
+    state.myMove = null; state.oppMove = null;
+    state.lastWin = true; state.forfeit = true; state.phase = "gameover"; render();
+  });
 }
 function ensureIo() {
   if (typeof io === "undefined" || !socket) { state.netMsg = tr().netErr; state.phase = "left"; state.screen = "game"; render(); return false; }
@@ -181,7 +186,7 @@ function loadHistory() {
 
 // ===================== bắt đầu trận =====================
 function freshScores() {
-  state.round = 1; state.scores = { me: 0, opp: 0 }; state.myMove = null; state.oppMove = null;
+  state.round = 1; state.scores = { me: 0, opp: 0 }; state.myMove = null; state.oppMove = null; state.forfeit = false;
 }
 function startBot(target) {
   state.mode = "bot"; state.role = "host"; state.target = target; state.oppName = tr().cpu;
@@ -377,13 +382,12 @@ function viewGame() {
   }
 
   var oppLabel = state.mode === "bot" ? tr().cpu : (state.oppName || tr().opp);
-  var maxRounds = state.target * 2 - 1;
   var showOpp = state.phase === "reveal" || state.phase === "gameover";
   var result = (showOpp && state.myMove && state.oppMove) ? judge(state.myMove, state.oppMove) : null;
 
   var head = '<div class="gamehead">' +
     '<div class="score me"><div class="lbl">' + tr().you + '</div><div class="val">' + state.scores.me + '</div></div>' +
-    '<div class="roundinfo">' + tr().round + ' ' + state.round + ' / ' + tr().maxR + ' ' + maxRounds +
+    '<div class="roundinfo">' + tr().round + ' ' + state.round +
       '<br><span class="small">' + tr().firstTo + ' ' + state.target + '</span></div>' +
     '<div class="score opp"><div class="lbl">' + esc(oppLabel) + '</div><div class="val">' + state.scores.opp + '</div></div>' +
   '</div>';
@@ -401,10 +405,14 @@ function viewGame() {
   var controls;
   if (state.phase === "gameover") {
     var won = state.mode === "online" ? state.lastWin : (state.scores.me >= state.target);
+    var buttons = state.forfeit
+      ? '<button class="btn" id="backBtn">' + tr().toLobby + '</button>'
+      : '<div class="stack"><button class="btn" id="rematchBtn">' + tr().again + '</button>' +
+        '<button class="btn ghost" id="backBtn">' + tr().toLobby + '</button></div>';
     controls = '<div class="center-msg"><div class="big">' + (won ? tr().youWin : tr().youLose) + '</div>' +
+      (state.forfeit ? '<div class="scoreline">' + tr().forfeitWin + '</div>' : '') +
       '<div class="scoreline">' + tr().score + ' ' + state.scores.me + ' – ' + state.scores.opp + '</div>' +
-      '<div class="stack"><button class="btn" id="rematchBtn">' + tr().again + '</button>' +
-      '<button class="btn ghost" id="backBtn">' + tr().toLobby + '</button></div></div>';
+      buttons + '</div>';
   } else if (state.phase === "left") {
     controls = '<div class="center-msg"><div class="big">⚠️</div>' +
       '<div class="scoreline">' + esc(state.netMsg) + '</div>' +

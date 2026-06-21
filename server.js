@@ -238,12 +238,36 @@ function endGame(socket) {
   const st = games[id];
   socket.data.matchId = null;
   if (!st) return;
+  const leaver = (st.a.socket.id === socket.id) ? st.a : st.b;
   const other = (st.a.socket.id === socket.id) ? st.b : st.a;
   if (other && other.socket && other.socket.connected) {
-    other.socket.emit("oppLeft");
+    if (!st.recorded) {
+      // Trận đang diễn ra: người ở lại được xử thắng target-0, người rời chịu thua.
+      st.recorded = true;
+      other.score = st.target; leaver.score = 0;
+      recordForfeit(st, other, leaver);
+      other.socket.emit("forfeit", { scores: { me: st.target, opp: 0 } });
+    } else {
+      other.socket.emit("oppLeft");
+    }
     other.socket.data.matchId = null;
   }
   delete games[id];
+}
+
+async function recordForfeit(st, winner, loser) {
+  try {
+    await pool.query("UPDATE users SET wins=wins+1 WHERE id=$1", [winner.uid]);
+    await pool.query("UPDATE users SET losses=losses+1 WHERE id=$1", [loser.uid]);
+    await pool.query(
+      "INSERT INTO matches(user_id,opponent,target,result,me_score,opp_score) VALUES($1,$2,$3,$4,$5,$6)",
+      [winner.uid, loser.name, st.target, "win", st.target, 0]
+    );
+    await pool.query(
+      "INSERT INTO matches(user_id,opponent,target,result,me_score,opp_score) VALUES($1,$2,$3,$4,$5,$6)",
+      [loser.uid, winner.name, st.target, "lose", 0, st.target]
+    );
+  } catch (e) { console.error("forfeit record error", e); }
 }
 
 async function recordMatch(st) {
